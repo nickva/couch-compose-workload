@@ -1,0 +1,75 @@
+# podman-compose up --build
+
+version: '3.5'
+
+services:
+
+  couchdb1:
+    image: couchdb:latest
+    container_name: couchdb1
+    environment:
+      - "COUCHDB_USER=${COUCHDB_USER:-adm}"
+      - "COUCHDB_PASSWORD=${COUCHDB_PASSWORD:-pass}"
+      - "COUCHDB_SECRET=${COUCHDB_SECRET:-123456}"
+      - "COUCHDB_ERLANG_COOKIE=${COUCHDB_ERLANG_COOKIE:-thecookie}"
+      - "NODENAME=10.0.0.11"
+    networks:
+      couchdb-cluster:
+        ipv4_address: 10.0.0.11
+
+  couchdb2:
+    image: couchdb:latest
+    container_name: couchdb2
+    environment:
+      - "COUCHDB_USER=${COUCHDB_USER:-adm}"
+      - "COUCHDB_PASSWORD=${COUCHDB_PASSWORD:-pass}"
+      - "COUCHDB_SECRET=${COUCHDB_SECRET:-123456}"
+      - "COUCHDB_ERLANG_COOKIE=${COUCHDB_ERLANG_COOKIE:-thecookie}"
+      - "NODENAME=10.0.0.12"
+    networks:
+      couchdb-cluster:
+        ipv4_address: 10.0.0.12
+
+  couchdb3:
+    image: couchdb:latest
+    container_name: couchdb3
+    environment:
+      - "COUCHDB_USER=${COUCHDB_USER:-adm}"
+      - "COUCHDB_PASSWORD=${COUCHDB_PASSWORD:-pass}"
+      - "COUCHDB_SECRET=${COUCHDB_SECRET:-123456}"
+      - "COUCHDB_ERLANG_COOKIE=${COUCHDB_ERLANG_COOKIE:-thecookie}"
+      - "NODENAME=10.0.0.13"
+    networks:
+      couchdb-cluster:
+        ipv4_address: 10.0.0.13
+
+  workload:
+    image: python:3.11-slim-bullseye
+    container_name: workload
+    build: .
+    command: >-
+      python workload.py
+       -u http://10.0.0.11:5984
+       -u http://10.0.0.12:5984
+       -u http://10.0.0.13:5984
+       -s couchdb@10.0.0.11
+       -s couchdb@10.0.0.12
+       -s couchdb@10.0.0.13
+       -n 10000
+       -w 6
+       -t 4
+       -k
+    depends_on:
+      - couchdb1
+      - couchdb2
+      - couchdb3
+    network:
+      couchdb-cluster:
+        ipv4_address: 10.0.0.14
+
+networks:
+  couchdb-cluster:
+    driver: bridge
+    ipam:
+      config:
+      - subnet: 10.0.0.0/24
